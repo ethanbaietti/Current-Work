@@ -654,5 +654,184 @@ paste0('OOB accuracy:', 1 - oob_err) #### .6742424
 
 varImp(rf_mod_t)
 
+  ##########
+###############
+# Riskified Coding Excersize - Jun 2020
+rm(list = ls())
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(ggcorrplot)
+
+data  <- read.csv('Analyst_Coding_Test_(1).csv', na.strings = c('',"NA"))
+n <- length(data$shape)
+
+#1 
+
+plot1 <- ggplot(data, aes(x = shape, y = area)) + geom_boxplot() + ggtitle('Boxplot: Area Size by Shape')
+plot1
+
+#2
+
+color_summary <- data %>% 
+  group_by(color) %>% 
+  summarize(mean = mean(area), max = max(area), std.dev = sd(area))
+
+
+#3
+avg_size_yellow <- mean(data$area[data$color == "yellow" & data$shape == "square"])
+print(avg_size_yellow)
+
+avg_size_yellow2 <- data %>%
+  filter(color == "yellow" & shape == "square") %>% 
+  summarize(avg_area = mean(area))
+
+#4
+
+green_prob <- data %>%
+  filter(color == "green") %>% 
+  count(color, shape)
+
+# The square is more likely to be green based on the green_prob table.
+
+#5
+
+large_red_object <- data %>% 
+  group_by(shape) %>% 
+  filter(color == "red" &  area > 3000) %>% 
+  summarize(n_instances = n()) %>% 
+  mutate(probability = (n_instances / sum(n_instances) * 100))
+
+#6
+
+side <- function(shape, area){
+  if(shape == "square"){
+    side = sqrt(area) 
+  } else {
+      if(shape == "triangle"){
+        side = (((2/3)*(3^(3/4))) * sqrt(area)) 
+      } else {
+          if(shape == "circle"){
+            side = sqrt(area/pi)
+            } else {
+              side = "NA"}
+      }
+  }
+  return(side)
+}
+
+
+#7 
+
+data$side <- mapply(side, data$shape, data$area)
+data$side <- round(data$side,0)
+
+head(data)
+
+#8
+plot2 <- ggplot(data, aes(x = shape, y = side)) + geom_boxplot() + ggtitle('Boxplot: Side Size by Shape')
+plot2
+
+#9
+plot3 <- ggplot(data, aes(x = side, y = area, col = shape)) + geom_point() + ggtitle('Scatterplot: Side Size Vs Area Size by Shape')
+plot3
+
+
+#10
+proportion_table <- data %>%
+  group_by(shape, color) %>%
+  summarize(n = n(), total_area = sum(area)) %>% 
+  mutate(object_portion = n /sum(n), area_portion = total_area / sum(total_area)) #Full Proportion Table for shape and color area.
+
+proportion_df <- data.frame("shape" = c("circle", "square", "triangle"))
+proportion_df$proportion_red <- proportion_table$object_portion[proportion_table$color =="red"]
+proportion_df$proportion_blue_area <- proportion_table$area_portion[proportion_table$color == "blue"]
+
+proportion_df
+
+#11
+
+color_area <- function(shape, color){
+  n = sum(data$area[data$shape == shape])
+  color_area = sum(data$area[data$color == color & data$shape == shape])
+  color_proportion <- color_area / n
+  return(color_proportion)
+}
+
+test <- color_area("square", "blue" )
+print(test)
+
+#The function can be used to check against the proportion table above.
+
+
+### ggplot2 Notes
+
+##Boxplot
+boxplot <- ggplot(data, aes(x = shape, y = area, col = color)) + geom_boxplot()
+boxplot
+
+#Scatter Plot
+scatter <- ggplot(data, aes(x = side, y = area)) + geom_point() + geom_point(aes(col = shape))
+scatter
+
+#Jitter Plot
+jitter <-  ggplot(data, aes(x = side, y = area, col = shape)) + geom_jitter(width = 3)
+jitter
+
+#Correlation Plot
+corr_plot <- ggcorrplot(data$area, data$side)
+
+glimpse(data)
+summary(data)
+
+#Histogram (continous) #binwidth overwrites number of bins
+histogram <- ggplot(data, aes(x = side)) + geom_histogram(aes(fill = shape), bins = 10, binwidth = 3)
+histogram
+
+#Histogram (catagorical)
+histogram_cat <- ggplot(data, aes(x=shape)) + geom_bar(aes(fill = color))
+histogram_cat
+
+#Density
+
+density <- ggplot(data, aes(area)) + geom_density()
+density
+
+#dplyr
+
+#Distinct
+
+distinct <- data %>%
+  distinct(color)
+
+# Counting Unique Values
+
+num_uni <- data %>%
+  group_by(color) %>% 
+  summarise( n = n_distinct(shape))
+
+
+# Counting Missing Values
+
+na_count <- data %>% 
+  summarise(n_na = sum(is.na(data)))
+
+#Replace NA values
+
+replace_na <- data %>%
+  mutate(side = replace(side, is.na(side), median(side, na.rm = TRUE)))
+
+# %in%
+
+in_ex <- data %>%
+  filter(shape %in% c("triangle", "circle"))
+
+
+#Pull 
+
+pull <- data %>%
+  pull(shape)
+
+
 
 
